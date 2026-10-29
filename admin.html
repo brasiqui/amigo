@@ -122,7 +122,7 @@ function renderizarLinks(tokenSalvo) {
         const registros = Array.isArray(dadosJSON) ? dadosJSON : Object.values(dadosJSON);
         
         // Altera dinamicamente admin.html para index.html tratando parâmetros adicionais de URL
-        const urlPartes = window.location.href.split('?');
+        const urlPartes = window.location.href;
         const urlParticipanteBase = urlPartes[0].replace("admin.html", "index.html");
         
         const listaUI = document.getElementById("lista-resultados");
