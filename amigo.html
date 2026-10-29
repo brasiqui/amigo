@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Amigo Secreto (GitHub Pages)</title>
+    <!-- Bibliotecas para gerar e baixar o ZIP de pastas diretamente pelo navegador -->
+    <script src="https://cloudflare.com"></script>
+    <script src="https://cloudflare.com"></script>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 650px; margin: 20px auto; padding: 0 15px; background-color: #f4f4f9; color: #333; }
+        h1, h2 { color: #2c3e50; }
+        button { background-color: #25d366; color: white; border: none; padding: 10px 15px; font-size: 14px; border-radius: 5px; cursor: pointer; }
+        button:hover { background-color: #128c7e; }
+        .btn-principal { background-color: #3498db; font-size: 16px; padding: 12px 20px; display: inline-block; margin-right: 10px; margin-bottom: 20px; }
+        .btn-principal:hover { background-color: #2980b9; }
+        .btn-zip { background-color: #9b59b6; }
+        .btn-zip:hover { background-color: #8e44ad; }
+        ul { list-style: none; padding: 0; }
+        li { background: white; margin: 10px 0; padding: 15px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+        .info { flex-grow: 1; }
+        .error { color: #e74c3c; font-weight: bold; margin-bottom: 15px; }
+        .url-preview { font-size: 11px; color: #7f8c8d; display: block; margin-top: 5px; word-break: break-all; }
+    </style>
+</head>
+<body>
+
+    <h1>Amigo Secreto Familiar 🎄</h1>
+    <p>Insira a URL do seu GitHub Pages abaixo, realize o sorteio e baixe a estrutura de pastas.</p>
+    
+    <label style="display:block; margin-bottom: 10px; font-weight: bold;">
+        URL Base do seu GitHub Pages:
+        <input type="text" id="url-base" value="https://github.io" style="width: 100%; padding: 8px; margin-top: 5px; border-radius: 4px; border: 1px solid #ccc;">
+    </label>
+
+    <button class="btn-principal" onclick="executarSorteio()">1. Realizar Sorteio</button>
+    <button class="btn-principal btn-zip" id="btn-download-zip" onclick="baixarPastasZIP()" disabled>2. Baixar Pastas (.ZIP)</button>
+    
+    <div id="resultado-erro" class="error"></div>
+
+    <h2>Links gerados para envio:</h2>
+    <ul id="lista-resultados"></ul>
+
+<script>
+const participantes = [
+    { nome: "Amanda", familia: "Avanço", isKid: false }, { nome: "Edilene", familia: "Barreto", isKid: false },
+    { nome: "Eliane", familia: "Palone", isKid: false }, { nome: "Elton", familia: "Palone", isKid: false },
+    { nome: "Erik", familia: "Avanço", isKid: false }, { nome: "Gerson", familia: "Arraes", isKid: false },
+    { nome: "Heloisa", familia: "Pontes", isKid: false }, { nome: "Jackeline", familia: "Garnica", isKid: false },
+    { nome: "Leonardo", familia: "Garnica", isKid: false }, { nome: "Marli", familia: "Arraes", isKid: false },
+    { nome: "Paola", familia: "Cruz", isKid: false }, { nome: "Roni", familia: "Cruz", isKid: false },
+    { nome: "Sergio", familia: "Barreto", isKid: false }, { nome: "Thiago", familia: "Pontes", isKid: false },
+    { nome: "Clara", familia: "Avanço", isKid: true }, { nome: "Danilo", familia: "Barreto", isKid: true },
+    { nome: "Gabi", familia: "Pontes", isKid: true }, { nome: "Izak", familia: "Garnica", isKid: true },
+    { nome: "Lais", familia: "Palone", isKid: true }, { nome: "Lorenzo", familia: "Arraes", isKid: true },
+    { nome: "Benjamin", familia: "Garnica", isKid: true }, { nome: "Luana", familia: "Cruz", isKid: true },
+    { nome: "Lucas", familia: "Palone", isKid: true }, { nome: "Lucia", familia: "Avanço", isKid: true },
+    { nome: "Manu", familia: "Pontes", isKid: true }
+];
+
+let sorteioGlobal = null;
+
+// Função auxiliar para gerar UUID no padrão simples de 4 blocos fornecido
+function gerarUUID() {
+    const s4 = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
+    return `${s4()}-${s4()}-${s4()}-${s4()}`;
+}
+
+function realizarSorteio(lista) {
+    let tentativas = 0;
+    const maxTentativas = 2000; 
+    while (tentativas < maxTentativas) {
+        tentativas++;
+        let destinatarios = [...lista].sort(() => Math.random() - 0.5);
+        let mapaSorteio = new Map();
+        let valido = true;
+
+        for (let participante of lista) {
+            let indexPar = destinatarios.findIndex(p => 
+                p.nome !== participante.nome && 
+                p.familia !== participante.familia && 
+                p.isKid === participante.isKid 
+            );
+            if (indexPar !== -1) {
+                mapaSorteio.set(participante, { amigo: destinatarios[indexPar], uuid: gerarUUID() });
+                destinatarios.splice(indexPar, 1);
+            } else {
+                valido = false;
+                break;
+            }
+        }
+        if (valido) return mapaSorteio;
+    }
+    return null; 
+}
+
+function executarSorteio() {
+    const divErro = document.getElementById("resultado-erro");
+    const listaUI = document.getElementById("lista-resultados");
+    divErro.innerText = "";
+    listaUI.innerHTML = "";
+
+    sorteioGlobal = realizarSorteio(participantes);
+    if (!sorteioGlobal) {
+        divErro.innerText = "Erro ao gerar sorteio.";
+        return;
+    }
+
+    document.getElementById("btn-download-zip").disabled = false;
+    let urlBase = document.getElementById("url-base").value.replace(/\/$/, "");
+
+    const chavesOrdenadas = Array.from(sorteioGlobal.keys()).sort((a, b) => a.nome.localeCompare(b.nome));
+
+    chavesOrdenadas.forEach((participante) => {
+        const dados = sorteioGlobal.get(participante);
+        const linkCompleto = `${urlBase}/sorteio/${dados.uuid}/`;
+
+        const li = document.createElement("li");
+        li.innerHTML = `
+            <div class="info">
+                <strong>${participante.nome}</strong>
+                <span class="url-preview">${linkCompleto}</span>
+            </div>
+            <button onclick="enviarWhats('${participante.nome}', '${linkCompleto}')">Enviar WhatsApp</button>
+        `;
+        listaUI.appendChild(li);
+    });
+}
+
+function enviarWhats(nomeOriginal, link) {
+    const mensagem = `Oi ${nomeOriginal}! 🎄\nSeu amigo secreto já foi sorteado! Para descobrir quem você tirou, acesse seu link exclusivo:\n\n${link}`;
+    window.open(`https://whatsapp.com{encodeURIComponent(mensagem)}`, '_blank');
+}
+
+// 3. GERAÇÃO DINÂMICA DO ZIP COM OS SUB-ARQUIVOS INDEX.HTML
+function baixarPastasZIP() {
+    if (!sorteioGlobal) return;
+
+    const zip = new JSZip();
+    const pastaSorteio = zip.folder("sorteio");
+
+    sorteioGlobal.forEach((dados, participante) => {
+        const pastaUsuario = pastaSorteio.folder(dados.uuid);
+        
+        // Modelo minimalista da página interna de cada participante contendo o seu resultado injetado no código
+        const htmlConteudo = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amigo Secreto 🤫</title>
+    <style>
+        body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f4f4f9; }
+        .container { text-align: center; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 90%; width: 320px; }
+        h1 { font-size: 20px; color: #2c3e50; margin-bottom: 20px; }
+        button { background-color: #3498db; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; transition: background 0.2s; }
+        button:hover { background-color: #2980b9; }
+        .resultado { font-size: 26px; font-weight: bold; color: #e74c3c; margin-top: 10px; display: none; background: #fdf2f2; padding: 15px; border-radius: 5px; border: 2px dashed #e74c3c; word-wrap: break-word; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Olá, ${participante.nome}! 👋</h1>
+        <button id="btn" onclick="revelar()">REVELAR MEU AMIGO SECRETO 👀</button>
+        <div id="res" class="resultado">${dados.amigo.nome}</div>
+    </div>
+    <script>
+        function revelar() {
+            document.getElementById("res").style.display = "block";
+            document.getElementById("btn").style.display = "none";
+        }
+    <\/script>
+</body>
+</html>`;
+
+        pastaUsuario.file("index.html", htmlConteudo);
+    });
+
+    // Dispara o download do arquivo ZIP compilado
+    zip.generateAsync({type:"blob"}).then(function(content) {
+        saveAs(content, "estrutura_amigo_secreto.zip");
+    });
+}
+</script>
+</body>
+</html>
