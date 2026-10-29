@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amigo Secreto 🤫</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f9; color: #333; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 90vh; }
+        .card { background: white; max-width: 400px; width: 100%; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); text-align: center; box-sizing: border-box; }
+        h1 { font-size: 22px; color: #2c3e50; margin-bottom: 20px; }
+        button { background-color: #3498db; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; }
+        button:hover { background-color: #2980b9; }
+        .resultado { font-size: 26px; font-weight: bold; color: #e74c3c; margin-top: 10px; display: none; background: #fdf2f2; padding: 15px; border-radius: 5px; border: 2px dashed #e74c3c; }
+        
+        /* Estilos do Painel do Organizador */
+        .admin-panel { display: none; text-align: left; max-width: 650px; width: 100%; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .btn-sortear { background-color: #2ecc71; margin-bottom: 20px; font-size: 18px; padding: 15px; }
+        .btn-sortear:hover { background-color: #27ae60; }
+        ul { list-style: none; padding: 0; }
+        li { background: #f8f9fa; margin: 10px 0; padding: 15px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; gap: 10px; border: 1px solid #e9ecef; }
+        .info { flex-grow: 1; }
+        .btn-whats { background-color: #25d366; width: auto; font-size: 14px; padding: 8px 15px; }
+        .btn-whats:hover { background-color: #128c7e; }
+        .url-preview { font-size: 11px; color: #7f8c8d; display: block; margin-top: 5px; word-break: break-all; }
+        .token-box { background: #e8f4fd; padding: 10px; border-radius: 4px; font-size: 12px; margin-bottom: 20px; word-break: break-all; font-family: monospace; }
+        .acesso-negado { display: none; text-align: center; color: #e74c3c; font-weight: bold; font-size: 18px; }
+    </style>
+</head>
+<body>
+
+    <!-- TELA DE ACESSO NEGADO -->
+    <div id="tela-erro" class="acesso-negado">
+        Página não encontrada ou acesso restrito. ❌
+    </div>
+
+    <!-- 1. TELA DO PARTICIPANTE -->
+    <div id="tela-participante" class="card" style="display: none;">
+        <h1 id="boas-vindas">Olá! 👋</h1>
+        <button id="btn-revelar" onclick="revelarAmigo()">REVELAR MEU AMIGO SECRETO 👀</button>
+        <div id="resultado-nome" class="resultado"></div>
+    </div>
+
+    <!-- 2. PAINEL DO ORGANIZADOR PROTEGIDO -->
+    <div id="tela-organizador" class="admin-panel">
+        <h1>Painel do Organizador - Amigo Secreto 🎄</h1>
+        <p>Clique no botão para gerar o sorteio. Os links dinâmicos serão criados abaixo.</p>
+        
+        <button class="btn-sortear" onclick="executarSorteio()">Realizar / Refazer Sorteio</button>
+        
+        <div id="bloco-token" style="display:none;">
+            <p><strong>Código de Segurança do Sorteio:</strong> (Caso atualize o código no GitHub, cole essa string na variável <code>RESULTADO_CRIPTOGRAFADO</code> para manter o mesmo sorteio ativo).</p>
+            <div id="token-resultado" class="token-box"></div>
+        </div>
+
+        <h2>Links de Envio para WhatsApp:</h2>
+        <ul id="lista-resultados"></ul>
+    </div>
+
+<script>
+// =========================================================================
+// CHAVE SECRETA DO ADMINISTRADOR (Altere se quiser um UUID ou texto personalizado)
+const TOKEN_ADMIN = "organizador-secreto-2026";
+
+// SEU RESULTADO CONSOLIDADO (Cole aqui a string gerada após fazer o sorteio se quiser congelar o resultado)
+const RESULTADO_CRIPTOGRAFADO = "eyJjZjk4LTI2MTgiOnsiZGUiOiJBbWFuZGEiLCJwYXJhIjoiTGVvbmFyZG8ifSwiYzM3ZS1lODBjIjp7ImRlIjoiRWRpbGVuZSIsInBhcmEiOiJKYWNrZWxpbmUifSwiYTU1Yy1iYTAyIjp7ImRlIjoiRWxpYW5lIiwicGFyYSI6IlJvbmkifSwiMDJlZC1iZDc5Ijp7ImRlIjoiRWx0b24iLCJwYXJhIjoiSGVsb2lzYSJ9LCJlZWI1LTc2OGMiOnsiZGUiOiJFcmlrIiwicGFyYSI6IlNlcmdpbyJ9LCJlYzJhLTVmMDQiOnsiZGUiOiJHZXJzb24iLCJwYXJhIjoiRXJpayJ9LCIxZWZjLTkzOGEiOnsiZGUiOiJIZWxvaXNhIiwicGFyYSI6IkdlcnNvbiJ9LCI1YjM3LWVkOTIiOnsiZGUiOiJKYWNrZWxpbmUiLCJwYXJhIjoiRWx0b24ifSwiMDViNS03ZTkyIjp7ImRlIjoiTGVvbmFyZG8iLCJwYXJhIjoiRWxpYW5lIn0sIjYyZjEtMDc5OSI6eyJkZSI6Ik1hcmxpIiwicGFyYSI6IkVkaWxlbmUifSwiMjRmMi0xYTNhIjp7ImRlIjoiUGFvbGEiLCJwYXJhIjoiTWFybGkifSwiZGYyMi1hODQxIjp7ImRlIjoiUm9uaSIsInBhcmEiOiJBbWFuZGEifSwiZDA5MS02NWU5Ijp7ImRlIjoiU2VyZ2lvIiwicGFyYSI6IlRoaWFnbyJ9LCJhNmM3LWRlYmYiOnsiZGUiOiJUaGlhZ28iLCJwYXJhIjoiUGFvbGEifSwiNWE5OC02YmU0Ijp7ImRlIjoiQ2xhcmEiLCJwYXJhIjoiSXphayJ9LCJkOGY1LWViYWYiOnsiZGUiOiJEYW5pbG8iLCJwYXJhIjoiTHVjYXMifSwiNDcxOS0zNmNkIjp7ImRlIjoiR2FiaSIsInBhcmEiOiJEYW5pbG8ifSwiNzMwNC1kNDZiIjp7ImRlIjoiSXphayIsInBhcmEiOiJMdWNpYSJ9LCJmMjgzLTBiZWIiOnsiZGUiOiJMYWlzIiwicGFyYSI6IkdhYmkifSwiMDQ3Ny1lZDY4Ijp7ImRlIjoiTG9yZW56byIsInBhcmEiOiJMdWFuYSJ9LCJmYjZkLWQ2MGMiOnsiZGUiOiJCZW5qYW1pbiIsInBhcmEiOiJMb3JlbnpvIn0sIjkwODUtYjBhNiI6eyJkZSI6Ikx1YW5hIiwicGFyYSI6Ik1hbnUifSwiMTEwYS01NDkzIjp7ImRlIjoiTHVjYXMiLCJwYXJhIjoiQmVuamFtaW4ifSwiMWJlNi1hYWQzIjp7ImRlIjoiTHVjaWEiLCJwYXJhIjoiTGFpcyJ9LCJlMzFlLTk2MGIiOnsiZGUiOiJNYW51IiwicGFyYSI6IkNsYXJhIn19"; 
+// =========================================================================
+
+const participantes = [
+    { nome: "Amanda", familia: "Avanço", isKid: false }, { nome: "Edilene", familia: "Barreto", isKid: false },
+    { nome: "Eliane", familia: "Palone", isKid: false }, { nome: "Elton", familia: "Palone", isKid: false },
+    { nome: "Erik", familia: "Avanço", isKid: false }, { nome: "Gerson", familia: "Arraes", isKid: false },
+    { nome: "Heloisa", familia: "Pontes", isKid: false }, { nome: "Jackeline", familia: "Garnica", isKid: false },
+    { nome: "Leonardo", familia: "Garnica", isKid: false }, { nome: "Marli", familia: "Arraes", isKid: false },
+    { nome: "Paola", familia: "Cruz", isKid: false }, { nome: "Roni", familia: "Cruz", isKid: false },
+    { nome: "Sergio", familia: "Barreto", isKid: false }, { nome: "Thiago", familia: "Pontes", isKid: false },
+    { nome: "Clara", familia: "Avanço", isKid: true }, { nome: "Danilo", familia: "Barreto", isKid: true },
+    { nome: "Gabi", familia: "Pontes", isKid: true }, { nome: "Izak", familia: "Garnica", isKid: true },
+    { nome: "Lais", familia: "Palone", isKid: true }, { nome: "Lorenzo", familia: "Arraes", isKid: true },
+    { nome: "Benjamin", familia: "Garnica", isKid: true }, { nome: "Luana", familia: "Cruz", isKid: true },
+    { nome: "Lucas", familia: "Palone", isKid: true }, { nome: "Lucia", familia: "Avanço", isKid: true },
+    { nome: "Manu", familia: "Pontes", isKid: true }
+];
+
+let amigoOcultoDaPessoa = "";
+
+window.onload = function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const idParticipante = urlParams.get('id');
+    const tokenAdminInformado = urlParams.get('admin');
+
+    // Caso 1: Acesso do Organizador (Se a URL contiver ?admin= chave_correta)
+    if (tokenAdminInformado === TOKEN_ADMIN) {
+        document.getElementById("tela-organizador").style.display = "block";
+        return;
+    }
+
+    // Caso 2: Acesso do Participante (Se a URL contiver ?id= e houver sorteio gravado)
+    if (idParticipante && RESULTADO_CRIPTOGRAFADO !== "") {
+        try {
+            const dadosSorteio = JSON.parse(decodeURIComponent(escape(atob(RESULTADO_CRIPTOGRAFADO))));
+            if (dadosSorteio[idParticipante]) {
+                document.getElementById("tela-participante").style.display = "block";
+                document.getElementById("boas-vindas").innerText = `Olá, ${dadosSorteio[idParticipante].de}! 👋`;
+                amigoOcultoDaPessoa = dadosSorteio[idParticipante].para;
+                return;
+            }
+        } catch (e) { console.error("Erro ao decodificar"); }
+    }
+    
+    // Caso 3: URL limpa ou inválida (Bloqueia o acesso geral)
+    document.getElementById("tela-erro").style.display = "block";
+};
+
+function revelarAmigo() {
+    if(!amigoOcultoDaPessoa) return;
+    document.getElementById("resultado-nome").innerText = amigoOcultoDaPessoa;
+    document.getElementById("resultado-nome").style.display = "block";
+    document.getElementById("btn-revelar").style.display = "none";
+}
+
+function realizarSorteio(lista) {
+    let tentativas = 0;
+    while (tentativas < 2000) {
+        tentativas++;
+        let destinatarios = [...lista].sort(() => Math.random() - 0.5);
+        let mapaSorteio = new Map();
+        let valido = true;
+
+        for (let participante of lista) {
+            let indexPar = destinatarios.findIndex(p => 
+                p.nome !== participante.nome && 
+                p.familia !== participante.familia && 
+                p.isKid === participante.isKid 
+            );
+            if (indexPar !== -1) {
+                mapaSorteio.set(participante, destinatarios[indexPar]);
+                destinatarios.splice(indexPar, 1);
+            } else { valido = false; break; }
+        }
+        if (valido) return mapaSorteio;
+    }
+    return null; 
+}
+
+function executarSorteio() {
+    const resultado = realizarSorteio(participantes);
+    if (!resultado) { alert("Erro ao gerar sorteio estável."); return; }
+
+    const urlBase = window.location.origin + window.location.pathname;
+    const dbExportado = {};
+    const listaUI = document.getElementById("lista-resultados");
+    listaUI.innerHTML = "";
+
+    resultado.forEach((para, de) => {
+        const uuid = Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1) + "-" + Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
+        dbExportado[uuid] = { de: de.nome, para: para.nome };
+    });
+
+    const stringCripto = btoa(unescape(encodeURIComponent(JSON.stringify(dbExportado))));
+    
+    document.getElementById("bloco-token").style.display = "block";
+    document.getElementById("token-resultado").innerText = stringCripto;
+
+    const itensOrdenados = Object.keys(dbExportado).map(id => ({id, ...dbExportado[id]})).sort((a,b) => a.de.localeCompare(b.de));
+
+    itensOrdenados.forEach((item) => {
+        const linkCompleto = `${urlBase}?id=${item.id}`;
+        const li = document.createElement("li");
+        li.innerHTML = `
+            <div class="info">
+                <strong>${item.de}</strong>
+                <span class="url-preview">${linkCompleto}</span>
+            </div>
+            <button class="btn-whats" onclick="enviarWhats('${item.de}', '${linkCompleto}')">Enviar WhatsApp</button>
+        `;
+        listaUI.appendChild(li);
+    });
+}
+
+function enviarWhats(nome, link) {
+    const msg = `Oi ${nome}! 🎄\nSeu amigo secreto já foi sorteado! Para descobrir quem você tirou de forma secreta, clique no seu link único:\n\n${link}`;
+    window.open(`https://whatsapp.com{encodeURIComponent(msg)}`, '_blank');
+}
+</script>
+</body>
+</html>
