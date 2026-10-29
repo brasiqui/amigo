@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel do Organizador - Amigo Secreto 🎄</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f9; color: #333; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 90vh; }
+        .admin-panel { max-width: 650px; width: 100%; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .btn-sortear { background-color: #2ecc71; color: white; border: none; padding: 15px; font-size: 18px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; margin-bottom: 20px; }
+        .btn-sortear:hover { background-color: #27ae60; }
+        ul { list-style: none; padding: 0; }
+        li { background: #f8f9fa; margin: 10px 0; padding: 15px; border-radius: 5px; border: 1px solid #e9ecef; }
+        .url-preview { font-size: 13px; color: #2980b9; font-weight: bold; display: block; margin-top: 5px; word-break: break-all; user-select: all; }
+        .token-box { background: #e8f4fd; padding: 10px; border-radius: 4px; font-size: 12px; margin-bottom: 20px; word-break: break-all; font-family: monospace; }
+    </style>
+</head>
+<body>
+
+    <div class="admin-panel">
+        <h1>Painel do Organizador 🎄</h1>
+        <p>Clique no botão para computar um novo sorteio. Caso já possua um ativo, o código atualizado manterá a persistência estática dos links abaixo.</p>
+        
+        <button class="btn-sortear" onclick="executarSorteio()">Realizar / Novo Sorteio</button>
+        
+        <div id="bloco-token" style="display:none;">
+            <p><strong>Código Consolidado do Sorteio Atual:</strong> (Para congelar este sorteio, copie a string inteira abaixo e cole na variável <code>RESULTADO_SALVO</code> dentro do código deste arquivo admin).</p>
+            <div id="token-resultado" class="token-box"></div>
+        </div>
+
+        <h2>Links Gerados (Selecione e copie manualmente):</h2>
+        <ul id="lista-resultados"></ul>
+    </div>
+
+<script>
+// =========================================================================
+// SEU RESULTADO CONSOLIDADO (Cole aqui a string gerada após fazer o seu sorteio definitivo)
+const RESULTADO_SALVO = "W3siZGVOb21lIjoiQW1hbmRhIiwiZGUiOiJRVzFoYm1SaCIsInBhcmEiOiJSV3hwWVc1bCJ9LHsiZGVOb21lIjoiQmVuamFtaW4iLCJkZSI6IlFtVnVhbUZ0YVc0PSIsInBhcmEiOiJSR0Z1YVd4diJ9LHsiZGVOb21lIjoiQ2xhcmEiLCJkZSI6IlEyeGhjbUU9IiwicGFyYSI6IlRHOXlaVzU2Ync9PSJ9LHsiZGVOb21lIjoiRGFuaWxvIiwiZGUiOiJSR0Z1YVd4diIsInBhcmEiOiJUSFZqYVdFPSJ9LHsiZGVOb21lIjoiRWRpbGVuZSIsImRlIjoiUldScGJHVnVaUT09IiwicGFyYSI6IlZHaHBZV2R2In0seyJkZU5vbWUiOiJFbGlhbmUiLCJkZSI6IlJXeHBZVzVsIiwicGFyYSI6IlJXUnBiR1Z1WlE9PSJ9LHsiZGVOb21lIjoiRWx0b24iLCJkZSI6IlJXeDBiMjQ9IiwicGFyYSI6IlVtOXVhUT09In0seyJkZU5vbWUiOiJFcmlrIiwiZGUiOiJSWEpwYXc9PSIsInBhcmEiOiJSV3gwYjI0PSJ9LHsiZGVOb21lIjoiR2FiaSIsImRlIjoiUjJGaWFRPT0iLCJwYXJhIjoiUTJ4aGNtRT0ifSx7ImRlTm9tZSI6IkdlcnNvbiIsImRlIjoiUjJWeWMyOXUiLCJwYXJhIjoiUlhKcGF3PT0ifSx7ImRlTm9tZSI6IkhlbG9pc2EiLCJkZSI6IlNHVnNiMmx6WVE9PSIsInBhcmEiOiJUV0Z5YkdrPSJ9LHsiZGVOb21lIjoiSXphayIsImRlIjoiU1hwaGF3PT0iLCJwYXJhIjoiVEhWaGJtRT0ifSx7ImRlTm9tZSI6IkphY2tlbGluZSIsImRlIjoiU21GamEyVnNhVzVsIiwicGFyYSI6IlNHVnNiMmx6WVE9PSJ9LHsiZGVOb21lIjoiTGFpcyIsImRlIjoiVEdGcGN3PT0iLCJwYXJhIjoiUW1WdWFtRnRhVzQ9In0seyJkZU5vbWUiOiJMZW9uYXJkbyIsImRlIjoiVEdWdmJtRnlaRzg9IiwicGFyYSI6IlFXMWhibVJoIn0seyJkZU5vbWUiOiJMb3JlbnpvIiwiZGUiOiJURzl5Wlc1NmJ3PT0iLCJwYXJhIjoiVFdGdWRRPT0ifSx7ImRlTm9tZSI6Ikx1YW5hIiwiZGUiOiJUSFZoYm1FPSIsInBhcmEiOiJUR0ZwY3c9PSJ9LHsiZGVOb21lIjoiTHVjYXMiLCJkZSI6IlRIVmpZWE09IiwicGFyYSI6IlIyRmlhUT09In0seyJkZU5vbWUiOiJMdWNpYSIsImRlIjoiVEhWamFXRT0iLCJwYXJhIjoiU1hwaGF3PT0ifSx7ImRlTm9tZSI6Ik1hbnUiLCJkZSI6IlRXRnVkUT09IiwicGFyYSI6IlRIVmpZWE09In0seyJkZU5vbWUiOiJNYXJsaSIsImRlIjoiVFdGeWJHaz0iLCJwYXJhIjoiU21GamEyVnNhVzVsIn0seyJkZU5vbWUiOiJQYW9sYSIsImRlIjoiVUdGdmJHRT0iLCJwYXJhIjoiVTJWeVoybHYifSx7ImRlTm9tZSI6IlJvbmkiLCJkZSI6IlVtOXVhUT09IiwicGFyYSI6IlIyVnljMjl1In0seyJkZU5vbWUiOiJTZXJnaW8iLCJkZSI6IlUyVnlaMmx2IiwicGFyYSI6IlVHRnZiR0U9In0seyJkZU5vbWUiOiJUaGlhZ28iLCJkZSI6IlZHaHBZV2R2IiwicGFyYSI6IlRHVnZibUZ5Wkc4PSJ9XQ=="; 
+// =========================================================================
+
+const participantes = [
+    { nome: "Amanda", familia: "Avanço", isKid: false }, { nome: "Edilene", familia: "Barreto", isKid: false },
+    { nome: "Eliane", familia: "Palone", isKid: false }, { nome: "Elton", familia: "Palone", isKid: false },
+    { nome: "Erik", familia: "Avanço", isKid: false }, { nome: "Gerson", familia: "Arraes", isKid: false },
+    { nome: "Heloisa", familia: "Pontes", isKid: false }, { nome: "Jackeline", familia: "Garnica", isKid: false },
+    { nome: "Leonardo", familia: "Garnica", isKid: false }, { nome: "Marli", familia: "Arraes", isKid: false },
+    { nome: "Paola", familia: "Cruz", isKid: false }, { nome: "Roni", familia: "Cruz", isKid: false },
+    { nome: "Sergio", familia: "Barreto", isKid: false }, { nome: "Thiago", familia: "Pontes", isKid: false },
+    { nome: "Clara", familia: "Avanço", isKid: true }, { nome: "Danilo", familia: "Barreto", isKid: true },
+    { nome: "Gabi", familia: "Pontes", isKid: true }, { nome: "Izak", familia: "Garnica", isKid: true },
+    { nome: "Lais", familia: "Palone", isKid: true }, { nome: "Lorenzo", familia: "Arraes", isKid: true },
+    { nome: "Benjamin", familia: "Garnica", isKid: true }, { nome: "Luana", familia: "Cruz", isKid: true },
+    { nome: "Lucas", familia: "Palone", isKid: true }, { nome: "Lucia", familia: "Avanço", isKid: true },
+    { nome: "Manu", familia: "Pontes", isKid: true }
+];
+
+window.onload = function() {
+    if (RESULTADO_SALVO !== "") {
+        renderizarLinks(RESULTADO_SALVO);
+    }
+};
+
+function realizarSorteio(lista) {
+    let tentativas = 0;
+    while (tentativas < 2000) {
+        tentativas++;
+        let destinatarios = [...lista].sort(() => Math.random() - 0.5);
+        let mapaSorteio = new Map();
+        let valido = true;
+
+        for (let participante of lista) {
+            let indexPar = destinatarios.findIndex(p => 
+                p.nome !== participante.nome && 
+                p.familia !== participante.familia && 
+                p.isKid === participante.isKid 
+            );
+            if (indexPar !== -1) {
+                mapaSorteio.set(participante, destinatarios[indexPar]);
+                destinatarios.splice(indexPar, 1);
+            } else { valido = false; break; }
+        }
+        if (valido) return mapaSorteio;
+    }
+    return null; 
+}
+
+function executarSorteio() {
+    if (RESULTADO_SALVO !== "") {
+        if (!confirm("Já existe um sorteio ativo e saved. Deseja realmente gerar outro e invalidar os links antigos?")) return;
+    }
+
+    const resultado = realizarSorteio(participantes);
+    if (!resultado) { alert("Erro ao gerar sorteio."); return; }
+
+    const registros = [];
+
+    resultado.forEach((para, de) => {
+        // Codifica os nomes individualmente em Base64 tratando acentos de forma nativa
+        const deB64 = btoa(unescape(encodeURIComponent(de.nome)));
+        const paraB64 = btoa(unescape(encodeURIComponent(para.nome)));
+        
+        registros.push({
+            deNome: de.nome,
+            de: deB64,
+            para: paraB64
+        });
+    });
+
+    // Mantém a organização alfabética por conveniência do administrador
+    registros.sort((a, b) => a.deNome.localeCompare(b.deNome));
+
+    // Empacota tudo em uma única string Base64 global para persistência em RESULTADO_SALVO
+    const stringFinal = btoa(unescape(encodeURIComponent(JSON.stringify(registros))));
+    renderizarLinks(stringFinal);
+}
+
+function renderizarLinks(tokenSalvo) {
+    try {
+        const stringDecodificada = decodeURIComponent(escape(atob(tokenSalvo)));
+        const dadosJSON = JSON.parse(stringDecodificada);
+        
+        const registros = Array.isArray(dadosJSON) ? dadosJSON : Object.values(dadosJSON);
+        
+        // Altera dinamicamente admin.html para index.html tratando parâmetros adicionais de URL
+        const urlPartes = window.location.href.split('?');
+        const urlParticipanteBase = urlPartes[0].replace("admin.html", "index.html");
+        
+        const listaUI = document.getElementById("lista-resultados");
+        listaUI.innerHTML = "";
+        
+        document.getElementById("bloco-token").style.display = "block";
+        document.getElementById("token-resultado").innerText = tokenSalvo;
+
+        for (const item of registros) {
+            // Monta o link simplificado com ?de= e &para= esperado pelo index.html
+            const linkCompleto = `${urlParticipanteBase}?d=${item.de}&k=${item.para}`;
+            const li = document.createElement("li");
+            li.innerHTML = `
+                <div>
+                    <strong>${item.deNome}:</strong>
+                    <span class="url-preview">${linkCompleto}</span>
+                </div>
+            `;
+            listaUI.appendChild(li);
+        }
+    } catch(e) { 
+        console.error("Erro ao processar e exibir os links salvos.", e); 
+    }
+}
+</script>
+</body>
+</html>
