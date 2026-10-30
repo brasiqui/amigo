@@ -128,7 +128,7 @@ function renderizarLinks(tokenSalvo) {
         const registros = Array.isArray(dadosJSON) ? dadosJSON : Object.values(dadosJSON);
         
         // Altera dinamicamente admin.html para index.html tratando parâmetros adicionais de URL
-        const urlPartes = window.location.href.split('admin');
+        const urlPartes = window.location.href.split('zoni');
         const urlParticipanteBase = urlPartes[0];
         
         const listaUI = document.getElementById("lista-resultados");
